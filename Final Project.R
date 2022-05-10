@@ -18,7 +18,7 @@ library("lme4")
 #Set working directory and load data
 setwd("~/MPS/Spring 2022/Data Manipulation Course/Final Project")
 data <- read.csv("heat_stress_data.csv")
-
+data
 #Select out columns of interest
 df1 <- data %>% dplyr::select(puck, AcclimationTankOriginal, TempRegimeTank, OriginalTreatment,
                        TreatmentTank, genotype, genotypeTag, region, experiment,
@@ -84,8 +84,6 @@ map2 <- ggmap(fl_map2) +
   xlab("")+
   ylab("")
 
-map2
-
 #Days until fragments were pulled analysis:
 df1_summarized <- df1 %>% group_by(genotypeTag, OriginalTreatment) %>% summarize(mean = mean(daysUntilPulled), sd = sd(daysUntilPulled))
 
@@ -96,16 +94,17 @@ ggplot(df1_summarized, aes(x=genotypeTag, y=mean, fill = OriginalTreatment)) + g
   ylab("Number of Days") + 
   ggtitle("Mean days before bleaching or tissue loss")
 
-aov1 <-aov(daysUntilPulled~OriginalTreatment + genotypeTag + OriginalTreatment:genotypeTag, data=df1)
+aov1 <-aov(daysUntilPulled ~ OriginalTreatment + genotypeTag + OriginalTreatment:genotypeTag, data=df1)
 anova(aov1) #both significant but interaction is not significant
 
-aov2 <- aov(daysUntilPulled~genotypeTag, data=df1)
-anova(aov2) #not significant
+aov2 <- aov(daysUntilPulled ~ genotypeTag, data = df1)
+anova(aov2) #genotype not significant
 
 t.test(daysUntilPulled~OriginalTreatment, data=df1)
-df1_differencepercentage_summarized <- df1 %>% group_by(genotypeTag, OriginalTreatment) %>% summarise(mean = mean(Difference_percentage), sd = sd(Difference_percentage))
 
 #Buoyant weight analysis
+df1_differencepercentage_summarized <- df1 %>% group_by(genotypeTag, OriginalTreatment) %>% summarise(mean = mean(Difference_percentage), sd = sd(Difference_percentage))
+
 par(mfrow = c(3, 2))
 ggplot(df1, aes(x=OriginalTreatment, y=Difference_percentage)) + 
   geom_boxplot(fill="cornsilk") + 
@@ -115,19 +114,18 @@ ggplot(df1, aes(x=OriginalTreatment, y=Difference_percentage)) +
   ggtitle("Comparing Differences in Buoyant Weight Changes for Treatment and Control")
 
 #Anovas on Growth Difference
-aov4 <- aov(Difference_percentage ~ OriginalTreatment + genotypeTag + OriginalTreatment:genotypeTag, data = df1)
-anova4 <- anova(aov4) #interaction not significant
-library(gridExtra)
-grid.table(anova4)
-TukeyHSD(aov4)
+aov3 <- aov(Difference_percentage ~ OriginalTreatment + genotypeTag + OriginalTreatment:genotypeTag, data = df1)
+anova(aov3) #interaction not significant
 
+#Since the interaction was not significant, can separate out into genotype and treatment group
+aov4 <- aov(Difference_percentage ~ genotypeTag, data = df1)
+anova(aov4) #significant
 
-aov5 <- aov(Difference_percentage ~ genotypeTag, data = df1)
-anova(aov5)
-post_hoc_aov5 <- TukeyHSD(aov5)
-post_hoc_aov5
-TK_data <- as.data.frame(post_hoc_aov5[1])
-TK_data_significant <- filter(TK_data, genotypeTag.p.adj <= "0.05") #only one significant difference
+post_hoc_aov4 <- TukeyHSD(aov4)
+post_hoc_aov4
+TK_data <- as.data.frame(post_hoc_aov4[1])
+TK_data_significant <- filter(TK_data, genotypeTag.p.adj <= "0.05") 
+TK_data_significant #two significant pairwise comparisons
 
 t.test(Difference_percentage~OriginalTreatment, data=df1) #significant
 
@@ -180,10 +178,3 @@ anova(model_onlyfixed, model_onlytreatment)
 
 #Shows that there is no significant difference from including Reef as a random effect so best model is one that includes Original Treatment and Genotype tag
 
-sim=simulateResiduals(model_onlyfixed,n=80,refit=F)
-testResiduals(sim)
-plotSimulatedResiduals(sim)
-
-testUniformity(sim)
-testOverdispersion(sim)
-testZeroInflation(sim)

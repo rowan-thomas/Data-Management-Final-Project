@@ -87,6 +87,8 @@ map2 <- ggmap(fl_map2) +
 #Days until fragments were pulled analysis:
 df1_summarized <- df1 %>% group_by(genotypeTag, OriginalTreatment) %>% summarize(mean = mean(daysUntilPulled), sd = sd(daysUntilPulled))
 
+mean_days <- df1 %>% group_by(OriginalTreatment) %>% summarize(mean=mean(daysUntilPulled), sd=sd(daysUntilPulled))
+
 ggplot(df1_summarized, aes(x=genotypeTag, y=mean, fill = OriginalTreatment)) + geom_col(position = "dodge") +
   geom_errorbar(aes(ymin = mean - sd, ymax = mean + sd), width = 0.3, position=position_dodge(0.9)) +
   scale_fill_manual(values = c("steelblue4","powderblue")) +
@@ -97,13 +99,9 @@ ggplot(df1_summarized, aes(x=genotypeTag, y=mean, fill = OriginalTreatment)) + g
 aov1 <-aov(daysUntilPulled ~ OriginalTreatment + genotypeTag + OriginalTreatment:genotypeTag, data=df1)
 anova(aov1) #both significant but interaction is not significant
 
-aov2 <- aov(daysUntilPulled ~ genotypeTag, data = df1)
-anova(aov2) #genotype not significant
-
-t.test(daysUntilPulled~OriginalTreatment, data=df1)
-
 #Buoyant weight analysis
 df1_differencepercentage_summarized <- df1 %>% group_by(genotypeTag, OriginalTreatment) %>% summarise(mean = mean(Difference_percentage), sd = sd(Difference_percentage))
+mean_percentage_summarized <- df1 %>% group_by(OriginalTreatment) %>% summarise(mean = mean(Difference_percentage), sd = sd(Difference_percentage))
 
 par(mfrow = c(3, 2))
 ggplot(df1, aes(x=OriginalTreatment, y=Difference_percentage)) + 
@@ -115,8 +113,8 @@ ggplot(df1, aes(x=OriginalTreatment, y=Difference_percentage)) +
 
 #Anovas on Growth Difference
 aov3 <- aov(Difference_percentage ~ OriginalTreatment + genotypeTag + OriginalTreatment:genotypeTag, data = df1)
-anova(aov3) #interaction not significant
-
+summary(aov3) #interaction not significant
+anova(aov3)
 #Since the interaction was not significant, can separate out into genotype and treatment group
 aov4 <- aov(Difference_percentage ~ genotypeTag, data = df1)
 anova(aov4) #significant
@@ -124,8 +122,8 @@ anova(aov4) #significant
 post_hoc_aov4 <- TukeyHSD(aov4)
 post_hoc_aov4
 TK_data <- as.data.frame(post_hoc_aov4[1])
-TK_data_significant <- filter(TK_data, genotypeTag.p.adj <= "0.05") 
-TK_data_significant #two significant pairwise comparisons
+TK_data_significant <- filter(TK_data, genotypeTag.p.adj <= "0.05") #two significant differences
+TK_data_significant
 
 t.test(Difference_percentage~OriginalTreatment, data=df1) #significant
 
@@ -148,7 +146,7 @@ qqline(df1$Difference)
 #Fixed = treatment assigned (OriginalTreatment, genotypeTag)
 #Random = not assigning a treatment (Reef)
 #Modeling
-model_all <- lmer(Difference_percentage ~ OriginalTreatment + genotypeTag +
+model_all <- glmer(Difference_percentage ~ OriginalTreatment + genotypeTag +
                      (1|Reef),
                       data=df1)
 
@@ -159,22 +157,13 @@ model_onlygeno <- lm(Difference_percentage ~ genotypeTag, data=df1)
 
 model_onlytreatment <- lm(Difference_percentage ~ OriginalTreatment, data=df1)
 
-model_originaltreatmentandreef <- lmer(Difference_percentage ~ OriginalTreatment +
-                     (1|Reef),
-                      data=df1)
 
-model_genotypeTagandreef <- lmer(Difference_percentage ~ genotypeTag +
-                     (1|Reef),
-                      data=df1)
 
 #Comparing AICs of models
 anova(model_all, model_onlyfixed) #no difference
-anova(model_all, model_onlygeno) #model all is better than only geno
-anova(model_all, model_onlytreatment) #model all is better than only genotype
-anova(model_all, model_originaltreatmentandreef) #model all is better
-anova(model_all, model_genotypeTagandreef) #model all is better
-anova(model_onlyfixed, model_onlygeno)
-anova(model_onlyfixed, model_onlytreatment)
+anova(model_onlyfixed, model_onlygeno) #model fixed is better than only geno
+anova(model_onlyfixed, model_onlytreatment) #model fixed is better than only genotype
+
 
 #Shows that there is no significant difference from including Reef as a random effect so best model is one that includes Original Treatment and Genotype tag
 
